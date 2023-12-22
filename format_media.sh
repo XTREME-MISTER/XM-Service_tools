@@ -26,3 +26,5 @@ mkfs.exfat -L "Xtreme" "${device}1" >/dev/null
 # Mount new partition
 mkdir -p "${mount_path}"
 mount "${device}1" "${mount_path}"
+
+echo '{"result":0}'
