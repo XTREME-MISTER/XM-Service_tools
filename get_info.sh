@@ -1,11 +1,43 @@
 #!/bin/sh
 out="{ "
 
+LAST_RELEASE_FILE=/media/fat/xmsl/.last_release
+if [ -f ${LAST_RELEASE_FILE} ]; then
+  LOCAL_LAST_RELEASE=`cat /media/fat/xmsl/.last_release | wc -c`
+  if [[ ${LOCAL_LAST_RELEASE} -eq 0 ]]; then
+    out="${out} \"local_last_release_status\":\"ERROR: The XMSL service version is wrong or missing. Please restore the /media/fat/xmsl folder files manually, or burn the latest Mr.Fusion backup (with XM optimizations) into your MicroSD card. Next retry this option to upgrade to the latest version.\""
+    out="${out}, \"local_last_release\":\"None\""
+  else
+    LOCAL_LAST_RELEASE=`cat /media/fat/xmsl/.last_release|awk '{print $0}'`
+    out="${out} \"local_last_release_status\":\"The local XMSL service ${LOCAL_LAST_RELEASE} version is present.\""
+    out="${out}, \"local_last_release\":\"${LOCAL_LAST_RELEASE}\""
+  fi
+else
+  out="${out} \"local_last_release_status\":\"ERROR: The XMSL service version is missing. Please restore the /media/fat/xmsl folder files manually, or burn the latest Mr.Fusion backup (with XM optimizations) into your MicroSD card. Next retry this option to upgrade to the latest version.\""
+  out="${out}, \"local_last_release\":\"None\""
+fi
+
+
+repo_owner="XTREME-MISTER"
+repo_name="XM-Service_tools"
+api_url="https://api.github.com/repos/$repo_owner/$repo_name/releases/latest"
+remote_release_info=`wget -qO- "$api_url"`
+REMOTE_LAST_RELEASE=`echo "$remote_release_info" | jq -r .tag_name | wc -c`
+if [[ ${REMOTE_LAST_RELEASE} -eq 0 ]]; then
+  out="${out}, \"remote_last_release_status\":\"ERROR: The remote XMSL service version cannot be retrieved. Please check your XM is connected to the Internet and with a valid IP and try again.\""
+  out="${out}, \"remote_last_release\":\"None\""
+else
+  REMOTE_LAST_RELEASE=`echo "$remote_release_info" | jq -r .tag_name`
+  out="${out}, \"remote_last_release_status\":\"The latest remote XMSL service version is ${REMOTE_LAST_RELEASE}.\""
+  out="${out}, \"remote_last_release\":\"${REMOTE_LAST_RELEASE}\""
+fi
+
+
 TIMEZONE_FILE=/media/fat/linux/timezone
 if [ -f ${TIMEZONE_FILE} ]; then
-  out="${out} \"custom_timezone\":true"
+  out="${out}, \"custom_timezone\":true"
 else
-  out="${out} \"custom_timezone\":false"
+  out="${out}, \"custom_timezone\":false"
 fi
 
 
@@ -106,7 +138,7 @@ if [[ ${RTC_PRESENT} -eq 0 ]]; then
 else
   RTC_PRESENT=`dmesg |grep -E '^.*?(rtc-pcf8563).*?(setting system clock to).*?$' | wc -c`
   if [[ ${RTC_PRESENT} -eq 0 ]]; then
-    out="${out}, \"rtc_status\":\"WARNING: RTC present but date/time not set from RTC. Connect the XM to the network, wait for a date update by NTP and run \"hwclock -wu\" and restart to double check. If the problem persists, verify the CR2032 3V coin battery.\""
+    out="${out}, \"rtc_status\":\"WARNING: RTC present but date/time not set from RTC. Connect the XM to the network, wait for a date update by NTP and run \\\"hwclock -wu\\\" and restart to double check. If the problem persists, verify the CR2032 3V coin battery.\""
   else
     out="${out}, \"rtc_status\":\"OK: Present and date/time updated from RTC\""
   fi
